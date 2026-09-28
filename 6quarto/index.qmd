@@ -1,0 +1,127 @@
+---
+title: "6 - quarto exercise"
+format: html
+---
+
+```{r}
+#| warning: false
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(reactable)
+library(plotly)
+library(crosstalk)
+```
+
+```{r}
+#Problem 1A
+#data
+times <- read.csv("C:/Users/Micha/Downloads/6quarto/timesData.csv")
+
+#top3 data
+top3_count <- times |>
+  count(country, name = "Number of Times Featured") |>
+  arrange(desc(`Number of Times Featured`)) |>
+  slice_head(n = 3) |>
+  rename(Country = country)
+
+#interactive table
+reactable(
+  top3_count,
+  searchable = TRUE,
+  striped = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 3
+)
+
+#Problem 1B
+#Bar chart of top 3 countries
+ggplot(top3_count,
+       aes(x = reorder(Country, `Number of Times Featured`),
+           y = `Number of Times Featured`)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Top 3 Countries by University Ranking Appearances",
+    x = "Country",
+    y = "Number of Times Featured"
+  ) + coord_flip() + theme_minimal()
+```
+
+```{r}
+#Problem 2A & 2C
+#Top 50 universities in 2011
+top50_2011 <- times |>
+  filter(year == 2011) |>
+  select(world_rank, university_name) |>
+  slice_head(n = 50) |>
+  mutate(world_rank = as.numeric(world_rank)) |>
+  rename(Rank = world_rank, University = university_name)
+
+#SharedData for filtering
+sd <- SharedData$new(top50_2011, key = ~Rank)
+bscols(widths = c(3, 9),
+       list(filter_slider(
+         id = "rank_filter",
+         label = "University Rank",
+         sharedData = sd,
+         column = ~Rank)
+         ),
+       reactable(sd,
+                 searchable = TRUE,
+                 striped = TRUE,
+                 highlight = TRUE,
+                 defaultPageSize = 10
+                 )
+       )
+#Problem 2B
+#Yes, the df is ordered by rank desc and there is a unique value 1-50 in the ranking column.
+```
+
+```{r}
+#Problem 3
+rank2016 <- times |>
+  filter(year == 2016) |>
+  mutate(num_students = as.numeric(gsub(",", "", num_students)),
+         student_staff_ratio = as.numeric(student_staff_ratio),
+         teaching = as.numeric(teaching)
+  )
+
+#SharedData object
+sd2016 <- SharedData$new(rank2016)
+
+#Scatterplot 1
+p1 <- plot_ly(
+  sd2016,
+  x = ~num_students,
+  y = ~student_staff_ratio,
+  type = "scatter",
+  mode = "markers"
+  ) |>
+  layout(
+    title = "Students vs Student-Staff Ratio",
+    xaxis = list(title = "Number of Students"),
+    yaxis = list(title = "Student-Staff Ratio")
+  )
+
+#Scatterplot 2
+p2 <- plot_ly(
+  sd2016,
+  x = ~student_staff_ratio,
+  y = ~teaching,
+  type = "scatter",
+  mode = "markers"
+  ) |>
+  layout(
+    title = "Student-Staff Ratio vs Teaching Score",
+    xaxis = list(title = "Student-Staff Ratio"),
+    yaxis = list(title = "Teaching Score")
+  )
+
+#Both plots
+bscols(
+  widths = c(6, 6),
+  p1,
+  p2
+)
+```
+
